@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"] as const;
 const suits = ["♠", "♥", "♦", "♣"] as const;
@@ -85,12 +85,25 @@ function createSession() {
   return Array.from({ length: sessionLength }, () => getRandomCard());
 }
 
+function createPlaceholderSession(): Card[] {
+  return Array.from({ length: sessionLength }, (_, index) => ({
+    id: `placeholder-${index}`,
+    rank: "A",
+    suit: "♠",
+    value: -1,
+  }));
+}
+
 export default function CardValuesPage() {
-  const [sessionCards, setSessionCards] = useState<Card[]>(() => createSession());
+  const [sessionCards, setSessionCards] = useState<Card[]>(() => createPlaceholderSession());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    setSessionCards(createSession());
+  }, []);
 
   const currentCard = sessionCards[currentIndex];
   const isCorrectAnswer = selectedAnswer !== null && selectedAnswer === currentCard.value;
