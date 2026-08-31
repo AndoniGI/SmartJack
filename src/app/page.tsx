@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="hero-page" aria-label="SmartJack landing page hero section">
@@ -27,9 +29,9 @@ export default function Home() {
           </p>
 
           <div className="cta-stack">
-            <button type="button" className="btn-primary">
+            <Link href="/training" className="btn-primary">
               START TRAINING
-            </button>
+            </Link>
             <button type="button" className="btn-secondary">
               HOW IT WORKS
             </button>
