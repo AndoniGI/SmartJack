@@ -15,18 +15,18 @@ const levels = [
     id: 2,
     title: "Running Count",
     description: "Keep a live count as cards are dealt.",
-    active: false,
-    locked: true,
-    badge: "Locked",
+    active: true,
+    locked: false,
+    badge: "Active",
     skill: "Tracking",
   },
   {
     id: 3,
     title: "Basic Strategy",
     description: "Practice choosing Hit, Stand, Double, or Split.",
-    active: false,
-    locked: true,
-    badge: "Locked",
+    active: true,
+    locked: false,
+    badge: "Active",
     skill: "Decision Making",
   },
   {
@@ -95,7 +95,18 @@ export default function TrainingPage() {
                       🔒
                     </span>
                   ) : (
-                    <Link href={level.id === 1 ? "/training/card-values" : "/training"} className="level-button">
+                    <Link
+                      href={
+                        level.id === 1
+                          ? "/training/card-values"
+                          : level.id === 2
+                            ? "/training/running-count"
+                            : level.id === 3
+                              ? "/training/basic-strategy"
+                              : "/training"
+                      }
+                      className="level-button"
+                    >
                       Start Level
                     </Link>
                   )}
