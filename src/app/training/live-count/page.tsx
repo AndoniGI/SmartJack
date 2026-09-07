@@ -1,17 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useBasicStrategyGame } from "./hooks/useBasicStrategyGame";
-import { useTableAnimation } from "./hooks/useTableAnimation";
+import { useEffect, useRef, useState } from "react";
+import { useLiveCountGame, SESSION_LENGTH } from "./hooks/useLiveCountGame";
+import { useTableAnimation } from "@/app/training/basic-strategy/hooks/useTableAnimation";
 import { type Hand } from "@/lib/hand";
 import { canSplit, isNaturalBlackjack } from "@/lib/hand";
-import { DealerRow, HandSlot, ActionButton } from "../_shared/components/BlackjackTable";
+import { DealerRow, HandSlot, ActionButton, getCardBackAssetPath } from "../_shared/components/BlackjackTable";
 import { StrategyChartToggle } from "../_shared/components/StrategyChartToggle";
-import "./basic-strategy.css";
+import "../basic-strategy/basic-strategy.css";
+import "./live-count.css";
 
-export default function BasicStrategyPage() {
-  const { session, startSession, submitDecision, continueToNextHand, resetSession } = useBasicStrategyGame();
+function formatAccuracy(value: number | null): string {
+  return value === null ? "—" : `${value}%`;
+}
+
+// Fixed number of decorative card-back layers drawn inside the shoe casing.
+// Purely visual texture — the *height* of the clipped stack (driven by the
+// real cardsRemaining/totalCards fraction) is what actually communicates
+// depletion, not this count.
+const SHOE_VISUAL_LAYERS = 6;
+
+/**
+ * Decorative shoe/deck indicator: a dark casing containing a stack of the
+ * same red card-back asset used for the dealer's hole card. The visible
+ * stack height is clipped to `fillFraction` (real cardsRemaining/totalCards
+ * from the persistent shoe), so it shrinks continuously as cards are
+ * actually dealt — never a per-hand step. No counts or numbers are shown.
+ */
+function ShoeIndicator({ fillFraction }: { fillFraction: number }) {
+  const clampedFraction = Math.max(0, Math.min(1, fillFraction));
+  const cardBack = getCardBackAssetPath();
+
+  return (
+    <div className="shoe-indicator" aria-label="Dealing from a persistent 6-deck shoe" title="6-deck shoe">
+      <div className="shoe-casing">
+        <div className="shoe-casing-inner">
+          <div className="shoe-cards" style={{ height: `${clampedFraction * 100}%` }}>
+            {Array.from({ length: SHOE_VISUAL_LAYERS }).map((_, i) => (
+              <img
+                key={i}
+                src={cardBack}
+                alt=""
+                className="shoe-card-img"
+                style={{ bottom: `${i * 3}px` }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="shoe-slot" />
+      </div>
+    </div>
+  );
+}
+
+export default function LiveCountPage() {
+  const {
+    session,
+    startSession,
+    submitDecision,
+    continueToNextHand,
+    resetSession,
+    lastCheckpointResult,
+    submitCountAnswer,
+    continueAfterCheckpoint,
+    strategyAccuracy,
+    countAccuracy,
+    shoeFillFraction,
+  } = useLiveCountGame();
+
   const {
     isDealing,
     dealtCount,
@@ -28,9 +85,23 @@ export default function BasicStrategyPage() {
     handleAction,
   } = useTableAnimation({ session, submitDecision, continueToNextHand });
 
+  const [countAnswer, setCountAnswer] = useState("");
+
+  // Guarded against React Strict Mode's dev-only mount→cleanup→mount replay,
+  // which would otherwise call startSession() twice — dealing (and counting)
+  // a real, never-shown hand from the persistent shoe before the one that
+  // actually gets displayed.
+  const hasStartedRef = useRef(false);
   useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
     startSession();
   }, [startSession]);
+
+  const handleContinueAfterCheckpoint = () => {
+    setCountAnswer("");
+    continueAfterCheckpoint();
+  };
 
   if (!session) {
     return <div>Loading...</div>;
@@ -38,14 +109,9 @@ export default function BasicStrategyPage() {
 
   const currentHand: Hand | undefined = session.hands[session.currentHandIndex];
 
-  // Results screen (after 10 hands completed) — unchanged from before.
   if (session.phase === "results") {
-    const totalDecisions = session.decisions.length;
-    const correctDecisions = session.decisions.filter((d) => d.isCorrect).length;
-    const accuracy = totalDecisions > 0 ? Math.round((correctDecisions / totalDecisions) * 100) : 0;
-
     return (
-      <main className="training-page basic-strategy-page">
+      <main className="training-page basic-strategy-page live-count-page">
         <div className="training-shell basic-strategy-shell">
           <header className="training-header basic-strategy-header">
             <Link href="/training" className="training-brand" aria-label="Back to training dashboard">
@@ -62,14 +128,12 @@ export default function BasicStrategyPage() {
 
             <div className="results-panel">
               <div className="result-stat">
-                <span className="result-label">Correct Decisions</span>
-                <strong>
-                  {correctDecisions} / {totalDecisions}
-                </strong>
+                <span className="result-label">Strategy Accuracy</span>
+                <strong>{formatAccuracy(strategyAccuracy)}</strong>
               </div>
               <div className="result-stat">
-                <span className="result-label">Accuracy</span>
-                <strong>{accuracy}%</strong>
+                <span className="result-label">Count Accuracy</span>
+                <strong>{formatAccuracy(countAccuracy)}</strong>
               </div>
             </div>
 
@@ -81,6 +145,89 @@ export default function BasicStrategyPage() {
                 Back to Training
               </Link>
             </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (session.phase === "paused") {
+    return (
+      <main className="training-page basic-strategy-page live-count-page">
+        <div className="training-shell basic-strategy-shell">
+          <header className="training-header basic-strategy-header">
+            <Link href="/training" className="training-brand" aria-label="Back to training dashboard">
+              SmartJack
+            </Link>
+            <nav className="training-nav" aria-label="Training navigation">
+              <Link href="/training">Training</Link>
+            </nav>
+          </header>
+
+          <section className="checkpoint-panel" aria-live="polite">
+            {!lastCheckpointResult ? (
+              <>
+                <p className="checkpoint-eyebrow">
+                  Checkpoint — after hand {session.completedHandCount} of {SESSION_LENGTH}
+                </p>
+                <h2 className="checkpoint-question">What is the running count?</h2>
+                <form
+                  className="checkpoint-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const parsed = parseInt(countAnswer, 10);
+                    if (!Number.isNaN(parsed)) submitCountAnswer(parsed);
+                  }}
+                >
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={countAnswer}
+                    onChange={(event) => setCountAnswer(event.target.value)}
+                    placeholder="Enter count"
+                    className="checkpoint-input"
+                    autoFocus
+                  />
+                  <button type="submit" className="btn-primary checkpoint-submit" disabled={countAnswer === ""}>
+                    Submit
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div
+                className={`checkpoint-result ${lastCheckpointResult.isCorrect ? "is-correct" : "is-incorrect"}`}
+              >
+                {lastCheckpointResult.isCorrect && (
+                  <div className="checkpoint-result-badge" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M5 13l4 4L19 7"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                )}
+                <p className="checkpoint-result-headline">
+                  {lastCheckpointResult.isCorrect ? "Correct" : "Incorrect"}
+                </p>
+                <div className="checkpoint-result-details">
+                  <div className="checkpoint-result-row">
+                    <span className="checkpoint-result-label">Your answer</span>
+                    <strong className="checkpoint-result-value">{lastCheckpointResult.userAnswer}</strong>
+                  </div>
+                  <div className="checkpoint-result-row">
+                    <span className="checkpoint-result-label">Actual running count</span>
+                    <strong className="checkpoint-result-value">{lastCheckpointResult.actualRunningCount}</strong>
+                  </div>
+                </div>
+                <button type="button" className="btn-primary checkpoint-submit" onClick={handleContinueAfterCheckpoint}>
+                  Continue
+                </button>
+              </div>
+            )}
           </section>
         </div>
       </main>
@@ -100,13 +247,10 @@ export default function BasicStrategyPage() {
     bustHandIndex === null &&
     !isPostDoublePause &&
     session.currentDecision;
-  // Hand 2's second card is already dealt in the data (unchanged game-hook
-  // behavior) but stays visually hidden until play actually reaches it —
-  // see the "new cards" effect in useTableAnimation.ts for the matching gate.
   const hand2Revealed = session.hands.length === 2 && session.currentHandIndex >= 1;
 
   return (
-    <main className="training-page basic-strategy-page">
+    <main className="training-page basic-strategy-page live-count-page">
       <div className="training-shell basic-strategy-shell">
         <header className="training-header basic-strategy-header">
           <Link href="/training" className="training-brand" aria-label="Back to training dashboard">
@@ -127,11 +271,16 @@ export default function BasicStrategyPage() {
 
         <section className="basic-strategy-panel table-panel compact" aria-live="polite">
           <div className="table-corner-meta">
-            <span>Hand {session.completedHandCount + 1} of 10</span>
-            <span className="table-corner-score">Score: {session.sessionScore}</span>
+            <span>
+              Hand {session.completedHandCount + 1} of {SESSION_LENGTH}
+            </span>
+            <span className="live-count-metrics">
+              Strategy {formatAccuracy(strategyAccuracy)} · Count {formatAccuracy(countAccuracy)}
+            </span>
           </div>
 
           <StrategyChartToggle />
+          <ShoeIndicator fillFraction={shoeFillFraction} />
 
           <div className="table-layout">
             <div className="table-surface">
@@ -196,9 +345,6 @@ export default function BasicStrategyPage() {
                     const handOutcome = outcomes?.[idx];
                     const isHand2Gated = idx === 1 && isSplit && !hand2Revealed;
                     const visibleCards = isHand2Gated ? hand.cards.slice(0, 1) : hand.cards;
-                    // Hand 2's second card already exists in the data before it's
-                    // visually revealed (see hand2Revealed above) — don't let
-                    // "Blackjack!" show while that card is still hidden.
                     const isCurrentNatural =
                       !isHand2Gated && hand.cards.length === 2 && !hand.hasActed && isNaturalBlackjack(hand.cards);
 

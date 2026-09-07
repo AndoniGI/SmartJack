@@ -31,6 +31,15 @@ const levels = [
   },
   {
     id: 4,
+    title: "Live Counting",
+    description: "Keep a Hi-Lo running count in your head while playing full hands from a persistent shoe.",
+    active: true,
+    locked: false,
+    badge: "Active",
+    skill: "Live Play",
+  },
+  {
+    id: 5,
     title: "True Count",
     description: "Convert the running count using decks remaining.",
     active: false,
@@ -39,7 +48,7 @@ const levels = [
     skill: "Conversion",
   },
   {
-    id: 5,
+    id: 6,
     title: "Count Deviations",
     description: "Learn when the count changes the mathematically correct play.",
     active: false,
@@ -103,7 +112,9 @@ export default function TrainingPage() {
                             ? "/training/running-count"
                             : level.id === 3
                               ? "/training/basic-strategy"
-                              : "/training"
+                              : level.id === 4
+                                ? "/training/live-count"
+                                : "/training"
                       }
                       className="level-button"
                     >
