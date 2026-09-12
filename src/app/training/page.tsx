@@ -42,9 +42,9 @@ const levels = [
     id: 5,
     title: "True Count",
     description: "Convert the running count using decks remaining.",
-    active: false,
-    locked: true,
-    badge: "Locked",
+    active: true,
+    locked: false,
+    badge: "Active",
     skill: "Conversion",
   },
   {
@@ -114,7 +114,9 @@ export default function TrainingPage() {
                               ? "/training/basic-strategy"
                               : level.id === 4
                                 ? "/training/live-count"
-                                : "/training"
+                                : level.id === 5
+                                  ? "/training/true-count"
+                                  : "/training"
                       }
                       className="level-button"
                     >

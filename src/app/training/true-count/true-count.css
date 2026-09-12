@@ -1,0 +1,97 @@
+/* Level 5 — True Count Page Styles
+   Table/dealer/hand/action/toast/results visuals come from basic-strategy.css,
+   and the checkpoint panel/result shell (progress dots aside) comes from
+   live-count.css — this page carries all three classes on <main>. Only the
+   pieces unique to Level 5 (the decks-remaining readout, the checkpoint
+   result breakdown) live here. */
+
+/* --- Checkpoint step progress (3 dots: running count / decks / true count) */
+.checkpoint-progress {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.1rem 0 0.2rem;
+}
+
+.checkpoint-progress-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: rgba(197, 166, 109, 0.25);
+  transition: background 0.25s ease-out;
+}
+
+.checkpoint-progress-dot.active {
+  background: var(--color-smart-gold);
+}
+
+/* --- Decks-remaining readout: no shoe visual — the real figure is simply
+   told to the player as text. */
+.decks-remaining-readout {
+  margin: 0.35rem 0 0.9rem;
+  font-size: 1.1rem;
+  color: var(--color-smart-light);
+}
+
+.decks-remaining-readout strong {
+  color: var(--color-smart-gold);
+  font-weight: 700;
+}
+
+/* --- Combined 3-question checkpoint result: extends live-count.css's
+   .checkpoint-result shell with a per-question breakdown instead of a
+   single value, plus a neutral "partial" tone for 1-2 of 3 correct. */
+.checkpoint-result.is-partial .checkpoint-result-headline {
+  color: var(--color-smart-gold);
+}
+
+.checkpoint-result-row {
+  align-items: center;
+  font-size: 1rem;
+}
+
+.checkpoint-result-row-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 1.2rem;
+  text-align: center;
+}
+
+.checkpoint-result-row.correct .checkpoint-result-row-icon {
+  color: #4ade80;
+}
+
+.checkpoint-result-row.incorrect .checkpoint-result-row-icon {
+  color: #f87171;
+}
+
+.checkpoint-result-row .checkpoint-result-label {
+  min-width: 8.5rem;
+  text-align: left;
+}
+
+.checkpoint-result-answer {
+  color: var(--color-smart-light);
+}
+
+.checkpoint-result-answer strong {
+  color: var(--color-smart-gold);
+  font-weight: 700;
+}
+
+.checkpoint-result-context {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-smart-light);
+}
+
+.checkpoint-result-context strong {
+  color: var(--color-smart-gold);
+  font-weight: 700;
+}
+
+.checkpoint-result-diagnostic {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-smart-gold-light);
+  font-style: italic;
+}
