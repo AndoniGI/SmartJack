@@ -466,6 +466,10 @@
   animation: slideIn 0.3s ease-out, slideOut 0.3s ease-out 1.9s forwards;
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Multi-line toasts (e.g. Level 6 Combined Mode's deviation breakdown)
+     stack their \n-joined lines; single-line toasts are unaffected. */
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
 .toast.correct {

@@ -16,6 +16,7 @@ import {
 import {
   type Hand,
   type Card,
+  type SplitContext,
   isBust,
   isNaturalBlackjack,
   isInitialPair,
@@ -40,9 +41,17 @@ import {
  *
  * @param hand - The player's hand
  * @param dealerUpcardRank - The dealer's upcard rank
+ * @param splitContext - Round hand count / cap governing whether Split is
+ *   actually legal right now (see canSplit in hand.ts). Omit for callers
+ *   that never re-split (Levels 3-5, Teacher Mode) — the default reproduces
+ *   the original "one split only" rule.
  * @throws if hand is bust or settled, or if hand has no cards
  */
-export function getCorrectAction(hand: Hand, dealerUpcardRank: string): FinalAction {
+export function getCorrectAction(
+  hand: Hand,
+  dealerUpcardRank: string,
+  splitContext?: SplitContext,
+): FinalAction {
   if (hand.cards.length === 0) {
     throw new Error("Cannot get strategy for hand with no cards");
   }
@@ -59,10 +68,14 @@ export function getCorrectAction(hand: Hand, dealerUpcardRank: string): FinalAct
     throw new Error("Natural blackjack should be settled automatically, no strategy decision needed");
   }
 
-  // Check for pair (only on exactly 2 cards)
+  // Check for pair (only on exactly 2 cards). Split is only ever the answer
+  // when it's actually legal right now (canSplit) — otherwise (e.g. the
+  // round's hand cap is already reached, or this would re-split Aces) the
+  // grader must fall through to a normal hard/soft evaluation, never demand
+  // an action the UI can't offer.
   if (isInitialPair(hand.cards)) {
     const pairRank = normalizePairRank(hand.cards[0].rank);
-    const shouldSplit = shouldSplitPair(pairRank, dealerUpcard);
+    const shouldSplit = shouldSplitPair(pairRank, dealerUpcard) && canSplit(hand, splitContext);
 
     if (shouldSplit) {
       return "split";
@@ -90,7 +103,7 @@ export function getCorrectAction(hand: Hand, dealerUpcardRank: string): FinalAct
 /**
  * Get the set of legal actions for a hand.
  */
-export function getLegalActionsForHand(hand: Hand): Set<FinalAction> {
+export function getLegalActionsForHand(hand: Hand, splitContext?: SplitContext): Set<FinalAction> {
   const legal = new Set<FinalAction>();
 
   if (hand.status !== "playing") return legal;
@@ -102,7 +115,7 @@ export function getLegalActionsForHand(hand: Hand): Set<FinalAction> {
     legal.add("double");
   }
 
-  if (canSplit(hand)) {
+  if (canSplit(hand, splitContext)) {
     legal.add("split");
   }
 
@@ -112,6 +125,6 @@ export function getLegalActionsForHand(hand: Hand): Set<FinalAction> {
 /**
  * Check if an action is legal for the current hand.
  */
-export function isActionLegal(hand: Hand, action: FinalAction): boolean {
-  return getLegalActionsForHand(hand).has(action);
+export function isActionLegal(hand: Hand, action: FinalAction, splitContext?: SplitContext): boolean {
+  return getLegalActionsForHand(hand, splitContext).has(action);
 }

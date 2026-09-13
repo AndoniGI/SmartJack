@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { type Card, type Hand } from "@/lib/hand";
+import { type Card, type Hand, type SplitContext } from "@/lib/hand";
 import { type FinalAction } from "@/data/basicStrategy";
 import { getCorrectAction, isActionLegal } from "@/lib/strategy";
 import { shouldDealerHit, getDealerTotal, getHandOutcome } from "@/lib/dealer";
@@ -79,6 +79,26 @@ export interface UseBlackjackSessionOptions {
    * face-down. Optional; omitted entirely by callers that don't count cards.
    */
   revealHiddenCard?: (card: Card) => void;
+  /**
+   * Called synchronously right after a fresh hand's opening deal (player's
+   * two cards, dealer upcard, dealer hole card — all already drawn, hole
+   * card excluded from any count as usual), with the dealer's upcard. This
+   * is the one moment a lifecycle decision that must be resolved before the
+   * dealer-blackjack peek is *shown* (e.g. Insurance) can hook in — the peek
+   * itself is already resolved synchronously below, so a caller that needs
+   * to gate on this should hold its own reveal back (e.g. render only an
+   * insurance prompt) until it's ready; this callback itself does not wait
+   * for anything. Optional; omitted entirely by callers with no such
+   * lifecycle decision (Levels 3-5).
+   */
+  onHandDealt?: (dealerUpcard: Card) => void;
+  /**
+   * Maximum total hands a single round may reach via splitting/re-splitting.
+   * Omitted entirely by callers that don't re-split (Levels 3-5) — the
+   * engine's own default (1) reproduces the original "one split only" rule
+   * unchanged. Level 6 Combined Mode passes 4.
+   */
+  maxSplitHands?: number;
 }
 
 /**
@@ -93,8 +113,16 @@ export function useBlackjackSession({
   sessionLength,
   shouldPauseBeforeNextHand,
   revealHiddenCard,
+  onHandDealt,
+  maxSplitHands = 1,
 }: UseBlackjackSessionOptions) {
   const [session, setSession] = useState<GameSessionState | null>(null);
+
+  /** The split context for a hand belonging to `hands` — see canSplit (hand.ts). */
+  const splitContextFor = useCallback(
+    (hands: Hand[]): SplitContext => ({ totalHandsInRound: hands.length, maxHands: maxSplitHands }),
+    [maxSplitHands],
+  );
 
   /**
    * Merge a patch into the current session.
@@ -114,14 +142,14 @@ export function useBlackjackSession({
    * Returns null if hand is a natural blackjack (no decision needed).
    */
   const createDecision = useCallback(
-    (hand: Hand, dealerUpcard: Card): Decision | null => {
+    (hand: Hand, dealerUpcard: Card, splitContext: SplitContext): Decision | null => {
       // Natural blackjacks don't get decisions
       if (isNaturalBlackjack(hand.cards)) {
         return null;
       }
 
       try {
-        const correctAction = getCorrectAction(hand, dealerUpcard.rank);
+        const correctAction = getCorrectAction(hand, dealerUpcard.rank, splitContext);
         return {
           handIndex: -1,
           correctAction,
@@ -149,6 +177,13 @@ export function useBlackjackSession({
     const dealerHoleCard = drawCard("dealer-hole");
     const playerCards = [drawCard("player-initial"), drawCard("player-initial")];
 
+    // All of this hand's visible cards (both player cards + dealer upcard)
+    // are drawn — and counted — above; the hole card is drawn but, as
+    // always, excluded from any count until it's revealed. This is the
+    // right moment for a lifecycle decision keyed off cards seen so far
+    // (e.g. Insurance).
+    onHandDealt?.(dealerUp);
+
     const dealerHasBlackjack = isNaturalBlackjack([dealerUp, dealerHoleCard]);
 
     const initialHand: Hand = {
@@ -159,7 +194,7 @@ export function useBlackjackSession({
       hasDoubled: false,
     };
 
-    const decision = dealerHasBlackjack ? null : createDecision(initialHand, dealerUp);
+    const decision = dealerHasBlackjack ? null : createDecision(initialHand, dealerUp, splitContextFor([initialHand]));
 
     return {
       phase: "playing",
@@ -170,7 +205,7 @@ export function useBlackjackSession({
       currentDecision: decision,
       currentHandOutcome: null,
     };
-  }, [drawCard, createDecision]);
+  }, [drawCard, createDecision, onHandDealt, splitContextFor]);
 
   /**
    * Apply a player action to the game state.
@@ -273,7 +308,7 @@ export function useBlackjackSession({
       const hand = session.hands[session.currentHandIndex];
       if (!hand) throw new Error("Invalid hand index");
 
-      if (!isActionLegal(hand, action)) {
+      if (!isActionLegal(hand, action, splitContextFor(session.hands))) {
         throw new Error(`Action ${action} is not legal for this hand`);
       }
 
@@ -307,7 +342,7 @@ export function useBlackjackSession({
 
       return updatedDecision;
     },
-    [session, applyAction],
+    [session, applyAction, splitContextFor],
   );
 
   /**
@@ -414,7 +449,7 @@ export function useBlackjackSession({
 
     // Still playing? Create new decision (e.g., after Hit)
     if (currentHand.status === "playing") {
-      const newDecision = createDecision(currentHand, session.dealerUpcard);
+      const newDecision = createDecision(currentHand, session.dealerUpcard, splitContextFor(session.hands));
       mergeSession({ currentDecision: newDecision });
       return;
     }
@@ -425,7 +460,7 @@ export function useBlackjackSession({
     if (nextHandIndex < session.hands.length) {
       // More split hands to play
       const nextHand = session.hands[nextHandIndex];
-      const newDecision = createDecision(nextHand, session.dealerUpcard);
+      const newDecision = createDecision(nextHand, session.dealerUpcard, splitContextFor(session.hands));
       mergeSession({ currentHandIndex: nextHandIndex, currentDecision: newDecision });
       return;
     }
@@ -442,7 +477,16 @@ export function useBlackjackSession({
       handResults: [...session.handResults, ...results],
       currentDecision: null,
     });
-  }, [session, mergeSession, createDecision, settleAllHands, sessionLength, shouldPauseBeforeNextHand, dealFreshHand]);
+  }, [
+    session,
+    mergeSession,
+    createDecision,
+    settleAllHands,
+    sessionLength,
+    shouldPauseBeforeNextHand,
+    dealFreshHand,
+    splitContextFor,
+  ]);
 
   /**
    * Resume from a "paused" phase (e.g. after a counting checkpoint) by

@@ -51,9 +51,9 @@ const levels = [
     id: 6,
     title: "Count Deviations",
     description: "Learn when the count changes the mathematically correct play.",
-    active: false,
-    locked: true,
-    badge: "Locked",
+    active: true,
+    locked: false,
+    badge: "Active",
     skill: "Advanced Play",
   },
 ];
@@ -116,7 +116,9 @@ export default function TrainingPage() {
                                 ? "/training/live-count"
                                 : level.id === 5
                                   ? "/training/true-count"
-                                  : "/training"
+                                  : level.id === 6
+                                    ? "/training/count-deviations"
+                                    : "/training"
                       }
                       className="level-button"
                     >

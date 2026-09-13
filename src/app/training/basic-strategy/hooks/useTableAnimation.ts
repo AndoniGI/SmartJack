@@ -63,15 +63,40 @@ export interface Toast {
 
 interface UseTableAnimationArgs {
   session: GameSessionState | null;
-  submitDecision: (action: FinalAction) => { isCorrect: boolean | null; correctAction: FinalAction } | null;
+  submitDecision: (action: FinalAction) => {
+    isCorrect: boolean | null;
+    correctAction: FinalAction;
+    /**
+     * Optional richer breakdown for the toast, in place of the generic
+     * "Correct play: X" line — e.g. Level 6 Combined Mode's basic
+     * strategy / true count / deviation breakdown. Omitted entirely by
+     * callers with nothing extra to show (Levels 3-5).
+     */
+    detailLines?: string[];
+  } | null;
   continueToNextHand: () => void;
+  /**
+   * Freezes every effect below that can auto-advance an unacted hand (the
+   * natural-blackjack settle and the dealer-blackjack peek) while true.
+   * Level 6 Combined Mode sets this while its own Insurance decision is
+   * pending, so the dealer-blackjack peek (and the settle it can trigger)
+   * never runs — and the round never silently advances — until the player
+   * has actually answered Insurance. Optional; defaults to false, so
+   * Levels 3-5 (which never pass it) are byte-for-byte unaffected.
+   */
+  holdForInsurance?: boolean;
 }
 
 function capitalizeAction(action: FinalAction): string {
   return action.charAt(0).toUpperCase() + action.slice(1);
 }
 
-export function useTableAnimation({ session, submitDecision, continueToNextHand }: UseTableAnimationArgs) {
+export function useTableAnimation({
+  session,
+  submitDecision,
+  continueToNextHand,
+  holdForInsurance = false,
+}: UseTableAnimationArgs) {
   const [isDealing, setIsDealing] = useState(true);
   const [dealtCount, setDealtCount] = useState(0);
   const [animatingCardIds, setAnimatingCardIds] = useState<Set<string>>(new Set());
@@ -179,11 +204,16 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
       return;
     }
 
-    const hand2Revealed = session.hands.length === 2 && session.currentHandIndex >= 1;
-
+    // A split hand's second card is dealt eagerly alongside every other
+    // split hand but shouldn't be detected as "new" (and animate in) until
+    // play actually reaches it — i.e. any hand beyond the currently-active
+    // one stays gated to its first card. Equivalent to the original
+    // 2-hand-only check when there are only ever 2 hands (Levels 3-5);
+    // generalizes to N hands for callers that support re-splitting
+    // (Level 6 Combined Mode).
     const newIds: string[] = [];
     session.hands.forEach((hand, idx) => {
-      const eligibleCards = idx === 1 && session.hands.length === 2 && !hand2Revealed ? hand.cards.slice(0, 1) : hand.cards;
+      const eligibleCards = idx > session.currentHandIndex ? hand.cards.slice(0, 1) : hand.cards;
       eligibleCards.forEach((card) => {
         if (!seenCardIdsRef.current.has(card.id)) {
           newIds.push(card.id);
@@ -202,6 +232,7 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
   // --- Natural blackjack: pause on "Blackjack!" then settle -------------
   useEffect(() => {
     if (!session || session.phase !== "playing" || isDealingRef.current || isSplitSeparatingRef.current) return;
+    if (holdForInsurance) return;
     const hand = session.hands[session.currentHandIndex];
     if (!hand) return;
     if (!(hand.status === "settled" && hand.cards.length === 2 && !hand.hasActed && isNaturalBlackjack(hand.cards))) {
@@ -221,7 +252,7 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [session, isDealing, isSplitSeparating, continueToNextHand]);
+  }, [session, isDealing, isSplitSeparating, continueToNextHand, holdForInsurance]);
 
   // --- Dealer blackjack check (upcard Ace/10-value only) ----------------
   // A visible "peek" beat before the player's first decision — or before
@@ -234,6 +265,11 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
   // no decision to protect and already run their own settle effect above.
   useEffect(() => {
     if (!session || session.phase !== "playing" || isDealingRef.current || isSplitSeparatingRef.current) return;
+    // Held while a Level 6 Combined Mode Insurance decision is pending: the
+    // peek (and the settle it can trigger on a dealer blackjack) must not
+    // run until Insurance has actually been answered. Levels 3-5 never set
+    // this, so this guard is always false for them.
+    if (holdForInsurance) return;
     // Restricted to the single, unsplit hand: the dealer peek happens once
     // per round, before any decision (including a Split) — not again for a
     // split hand's own first decision, which also starts unacted at 2 cards.
@@ -276,7 +312,7 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [session, isDealing, isSplitSeparating, continueToNextHand]);
+  }, [session, isDealing, isSplitSeparating, continueToNextHand, holdForInsurance]);
 
   // --- Re-decide after a non-busting Hit (fresh total, same hand) ------
   useEffect(() => {
@@ -413,7 +449,11 @@ export function useTableAnimation({ session, submitDecision, continueToNextHand 
       if (!decision) return;
 
       const toastId = Math.random().toString(36);
-      const message = decision.isCorrect ? "Correct" : `Correct play: ${capitalizeAction(decision.correctAction)}`;
+      const message = decision.isCorrect
+        ? "Correct"
+        : decision.detailLines?.length
+          ? decision.detailLines.join("\n")
+          : `Correct play: ${capitalizeAction(decision.correctAction)}`;
       setToasts((prev) => [...prev, { id: toastId, message, isCorrect: decision.isCorrect ?? false }]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toastId));

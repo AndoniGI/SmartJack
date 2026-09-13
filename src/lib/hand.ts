@@ -123,16 +123,40 @@ export function isInitialPair(cards: Card[]): boolean {
 }
 
 /**
+ * Governs re-splitting. `totalHandsInRound` is the round's current hand
+ * count (including the hand being checked); `maxHands` is how many total
+ * hands this caller allows. The default of `{ totalHandsInRound: 1, maxHands: 1 }`
+ * reproduces the original "no re-splitting" rule exactly — every caller that
+ * doesn't pass a context (Levels 3-5, Teacher Mode) is unaffected by
+ * re-split support elsewhere (e.g. Level 6 Combined Mode, which passes
+ * `maxHands: 4`).
+ */
+export interface SplitContext {
+  totalHandsInRound: number;
+  maxHands: number;
+}
+
+const DEFAULT_SPLIT_CONTEXT: SplitContext = { totalHandsInRound: 1, maxHands: 1 };
+
+/**
  * Check if splitting is legal for this hand.
  * - Must be exactly 2 cards
  * - Must be a matching pair (including 10-value equivalents)
- * - No re-splitting in v1 (so the hand must not have come from a previous split)
+ * - Re-splitting (hand.hasSplit) is only allowed when the caller's
+ *   maxHands > 1, Aces are never re-split, and the round's hand cap hasn't
+ *   been reached yet.
  */
-export function canSplit(hand: Hand): boolean {
+export function canSplit(hand: Hand, splitContext: SplitContext = DEFAULT_SPLIT_CONTEXT): boolean {
   if (hand.cards.length !== 2) return false;
-  if (hand.hasSplit) return false; // v1: no re-splitting
+  if (!isInitialPair(hand.cards)) return false;
 
-  return isInitialPair(hand.cards);
+  if (hand.hasSplit) {
+    if (splitContext.maxHands <= 1) return false; // this caller doesn't support re-splitting at all
+    if (normalizePairRank(hand.cards[0].rank) === "A") return false; // Aces are never re-split
+    if (splitContext.totalHandsInRound >= splitContext.maxHands) return false; // round's hand cap reached
+  }
+
+  return true;
 }
 
 /**
@@ -161,7 +185,10 @@ export function canStand(hand: Hand): boolean {
 /**
  * Get the set of legal actions for a hand.
  */
-export function getLegalActions(hand: Hand): Set<"hit" | "stand" | "double" | "split"> {
+export function getLegalActions(
+  hand: Hand,
+  splitContext?: SplitContext,
+): Set<"hit" | "stand" | "double" | "split"> {
   const legal = new Set<"hit" | "stand" | "double" | "split">();
 
   if (hand.status !== "playing") return legal;
@@ -173,7 +200,7 @@ export function getLegalActions(hand: Hand): Set<"hit" | "stand" | "double" | "s
     legal.add("double");
   }
 
-  if (canSplit(hand)) {
+  if (canSplit(hand, splitContext)) {
     legal.add("split");
   }
 

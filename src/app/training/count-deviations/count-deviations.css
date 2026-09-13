@@ -1,0 +1,395 @@
+/* Level 6 — Count Deviations styles.
+   Combined Mode reuses basic-strategy.css / live-count.css / true-count.css
+   verbatim for the table, checkpoint panel, and results screen — only the
+   pieces unique to Level 6 (the mode-select landing page and the Deviation
+   Teacher drill) live here. */
+
+/* --- Mode-select landing page ------------------------------------------ */
+.count-deviations-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.count-deviations-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-smart-gold-light);
+}
+
+.count-deviations-description {
+  max-width: 34rem;
+  color: var(--color-smart-light);
+}
+
+.count-deviations-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 44rem;
+  margin-top: 0.5rem;
+}
+
+.count-deviations-mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(197, 166, 109, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  text-align: left;
+  text-decoration: none;
+  color: var(--color-smart-cream);
+  transition: border-color 0.15s ease-out, background 0.15s ease-out, transform 0.1s ease-out;
+}
+
+.count-deviations-mode-card:hover {
+  border-color: rgba(197, 166, 109, 0.7);
+  background: rgba(197, 166, 109, 0.1);
+  transform: translateY(-2px);
+}
+
+.count-deviations-mode-card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--color-smart-gold);
+}
+
+.count-deviations-mode-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-smart-light);
+}
+
+/* --- Insurance yes/no options (Teacher Mode's own scenario type — kept
+   general-purpose). */
+.deviation-scenario-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+/* --- Combined Mode: session-start briefing overlay (before Hand 1) -----
+   Reuses StrategyChartToggle's overlay/panel chrome (fixed, dimmed backdrop
+   over the already-dealt table) so the briefing reads as sitting "on top of"
+   the table rather than replacing it. */
+.session-briefing-panel {
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  width: min(22rem, 90vw);
+  padding: 1.75rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.session-briefing-stats {
+  max-width: none;
+}
+
+.session-briefing-start {
+  width: 100%;
+}
+
+/* Small heading above the Insurance Take/Decline buttons in the action
+   rail — mirrors the rail's other small-caps labels. */
+.insurance-prompt-title {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--color-smart-gold-light);
+}
+
+/* --- Deviation Teacher drill: reuses the real table layout (table-panel /
+   table-layout / dealer-stage / player-row / actions-rail, all from
+   basic-strategy.css) — only the pieces unique to the drill live here. */
+.deviation-teacher-panel {
+  position: relative;
+}
+
+/* Learn/Practice segmented toggle. */
+.deviation-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin: 0 auto;
+  width: fit-content;
+  border: 1px solid rgba(197, 166, 109, 0.4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.deviation-mode-toggle button {
+  padding: 0.3rem 0.9rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: none;
+  background: transparent;
+  color: var(--color-smart-light);
+  cursor: pointer;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+
+.deviation-mode-toggle button.active {
+  background: var(--color-smart-gold);
+  color: var(--color-smart-dark);
+  font-weight: 700;
+}
+
+.deviation-mode-toggle button:not(.active):hover {
+  background: rgba(197, 166, 109, 0.15);
+}
+
+/* Prominent true-count readout — the whole point of requirement 2. */
+.true-count-banner {
+  margin: 0;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-smart-gold);
+}
+
+/* Learn-mode hint, shown above the action buttons before answering. */
+.deviation-index-hint {
+  margin: 0 0 0.2rem;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--color-smart-gold-light);
+  font-style: italic;
+}
+
+/* Insurance decision buttons, styled like the real action-button rail
+   (base sizing/shape from basic-strategy.css's .action-button) but with
+   their own colors since "insurance" isn't one of the four table actions. */
+.action-button.insurance-yes {
+  background: var(--color-smart-gold);
+  color: var(--color-smart-dark);
+}
+
+.action-button.insurance-yes:hover {
+  background: var(--color-smart-gold-light);
+}
+
+.action-button.insurance-no {
+  background: rgba(212, 201, 185, 0.18);
+  color: var(--color-smart-cream);
+}
+
+.action-button.insurance-no:hover {
+  background: rgba(212, 201, 185, 0.3);
+}
+
+/* Post-answer feedback: replaces the actions-rail's buttons in place — it
+   never overlaps the table, and the rail widens slightly (still a normal
+   side rail, not full-width) so the four rows have room to breathe. Reuses
+   live-count.css's .checkpoint-result/-headline (the "existing subtle
+   success pop/glow" — see checkpoint-correct-pop) rather than a new
+   animation; only sizing is overridden here for the narrower column. */
+.actions-rail-feedback {
+  width: 15.5rem;
+  justify-content: flex-start;
+  gap: 0.9rem;
+  padding-top: 0.25rem;
+}
+
+.deviation-feedback {
+  align-items: stretch;
+  text-align: left;
+  gap: 0.9rem;
+}
+
+.deviation-feedback-headline {
+  font-size: 1.7rem;
+  text-align: center;
+}
+
+.deviation-feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.deviation-feedback-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.deviation-feedback-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-smart-light);
+}
+
+.deviation-feedback-value {
+  font-size: 0.95rem;
+  color: var(--color-smart-cream);
+  font-weight: 700;
+}
+
+/* "Correct play" is the row that matters most — visually the loudest. */
+.deviation-feedback-row-primary {
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(197, 166, 109, 0.25);
+}
+
+.deviation-feedback-row-primary .deviation-feedback-value {
+  font-size: 1.3rem;
+  color: var(--color-smart-gold);
+}
+
+.deviation-feedback-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-smart-gold-light);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.deviation-feedback-next {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12rem;
+}
+
+/* --- Deviation Reference overlay (DeviationChartToggle) — reuses
+   StrategyChartToggle's .strategy-chart-* chrome for visual consistency;
+   only the toggle's position and the panel's content differ. */
+.deviation-chart-toggle {
+  right: 3.6rem;
+}
+
+.deviation-chart-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: min(26rem, 90vw);
+  padding: 1.5rem 1.5rem 1.25rem;
+}
+
+.deviation-chart-title {
+  margin: 0;
+  font-size: 1.1rem;
+  text-align: center;
+  color: var(--color-smart-gold);
+}
+
+.deviation-chart-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.deviation-chart-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  background: rgba(197, 166, 109, 0.08);
+}
+
+.deviation-chart-label {
+  color: var(--color-smart-cream);
+  font-weight: 600;
+}
+
+.deviation-chart-value {
+  color: var(--color-smart-gold);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.deviation-rule-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.deviation-rule-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--color-smart-light);
+}
+
+/* --- Combined Mode: continuous approx-decks-remaining readout ----------
+   Sits below the Strategy/Deviation chart-toggle buttons (which occupy the
+   top-right corner at top:0.6rem) so it never overlaps them. Never shows
+   the running count or true count themselves — see useCountDeviationsGame's
+   approxDecksRemaining. The value is deliberately the loudest thing in this
+   corner (much larger than the small uppercase corner labels elsewhere) so
+   it reads at a glance during live play — the player is meant to lean on it
+   continuously to convert their own running count into a true count. */
+.table-corner-meta-right {
+  left: auto;
+  right: 0.75rem;
+  top: 3.1rem;
+  align-items: flex-end;
+  text-align: right;
+  gap: 0.1rem;
+}
+
+.table-corner-decks-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.table-corner-decks-value {
+  display: block;
+  color: var(--color-smart-gold);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* --- Re-split (3-4 hand) layouts: progressively smaller cards/spacing so
+   every hand stays visible without introducing horizontal scrolling. Only
+   Combined Mode can ever reach more than 2 hands, so Levels 3-5 (which
+   share .player-row/.hand-slot/.playing-card via basic-strategy.css) never
+   render these classes. */
+.player-row.hands-3,
+.player-row.hands-4 {
+  gap: 0.6rem;
+}
+
+.player-row.hands-3 .playing-card,
+.player-row.hands-4 .playing-card {
+  height: min(160px, 22vh);
+}
+
+.player-row.hands-4 .playing-card {
+  height: min(130px, 19vh);
+}
+
+.player-row.hands-3 .hand-slot,
+.player-row.hands-4 .hand-slot {
+  padding: 0.4rem 0.45rem;
+  gap: 0.3rem;
+}
+
+.player-row.hands-3 .cards-container,
+.player-row.hands-4 .cards-container {
+  gap: 0.25rem;
+}

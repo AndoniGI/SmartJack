@@ -41,10 +41,9 @@ function shuffle<T>(items: T[]): T[] {
   return shuffled;
 }
 
-/** Builds and shuffles a fresh shoe of `deckCount` standard 52-card decks. */
-export function createShoe(deckCount: number): Shoe {
-  const totalCards = deckCount * CARDS_PER_DECK;
-  const cards = shuffle(Array.from({ length: deckCount }, (_, i) => buildDeck(i)).flat());
+/** Builds a Shoe that deals exactly `cards`, in order, front to back. */
+function buildShoeFromCards(cards: Card[]): Shoe {
+  const totalCards = cards.length;
   let dealtCount = 0;
 
   const draw = (): Card => {
@@ -58,7 +57,28 @@ export function createShoe(deckCount: number): Shoe {
 
   const cardsRemaining = () => totalCards - dealtCount;
   const decksRemaining = () => cardsRemaining() / CARDS_PER_DECK;
-  const penetration = () => dealtCount / totalCards;
+  const penetration = () => (totalCards === 0 ? 1 : dealtCount / totalCards);
 
   return { draw, cardsRemaining, totalCards: () => totalCards, decksRemaining, penetration };
+}
+
+/** Builds and shuffles a fresh shoe of `deckCount` standard 52-card decks. */
+export function createShoe(deckCount: number): Shoe {
+  const cards = shuffle(Array.from({ length: deckCount }, (_, i) => buildDeck(i)).flat());
+  return buildShoeFromCards(cards);
+}
+
+/**
+ * Builds and shuffles a shoe sized to an exact card count rather than a
+ * whole number of decks — used for Level 6 Combined Mode's randomized
+ * synthetic starting decks-remaining (e.g. 3.5 decks -> 182 cards), which is
+ * never a whole-deck multiple. Draws from enough full 52-card decks to cover
+ * the requested count, shuffles them together, then trims to exactly
+ * `cardCount` cards, so composition stays a realistic mix of full decks
+ * rather than a hand-picked subset.
+ */
+export function createShoeWithCardCount(cardCount: number): Shoe {
+  const deckCount = Math.max(1, Math.ceil(cardCount / CARDS_PER_DECK));
+  const cards = shuffle(Array.from({ length: deckCount }, (_, i) => buildDeck(i)).flat()).slice(0, cardCount);
+  return buildShoeFromCards(cards);
 }
