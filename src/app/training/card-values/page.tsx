@@ -122,12 +122,29 @@ export default function CardValuesPage() {
     }
   };
 
-  const handleNextCard = () => {
+  const handleNextCard = async () => {
     if (selectedAnswer === null) {
       return;
     }
 
     if (isLastCard) {
+      try {
+        const response = await fetch("/api/results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level: 1, score, total: sessionCards.length, accuracy }),
+        });
+
+        if (!response.ok) {
+          console.error("Server rejected the result:", response.status, response.statusText);
+        } else {
+          const result = await response.json();
+          console.log("Server responded:", result);
+        }
+      } catch (error) {
+        console.error("Network request failed:", error);
+      }
+
       setCompleted(true);
       return;
     }
